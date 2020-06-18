@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	arguments := []string{"t", "3"}
+	arguments := []string{"-l", "-p", "32", "-d", "test"}
 	var a args.Args
-	a.Init("l", arguments)
+	a.Init("l,p#,d*", arguments)
 }

@@ -3,21 +3,25 @@ package args
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"unicode"
 )
 
 // Args defines the structure of the Args class
 type Args struct {
-	schema          string
-	args            []string
-	valid           bool
-	booleanArgs     map[string]bool
-	stringArgs      map[string]string
-	intArgs         map[string]int
-	currentArgument int
-	errorArgumentID rune
-	errorParameter  string
+	schema              string
+	args                []string
+	valid               bool
+	unexpectedArguments map[string]string
+	booleanArgs         map[string]bool
+	stringArgs          map[string]string
+	intArgs             map[string]int
+	argsFound           map[string]string
+	currentArgument     int
+	errorArgumentID     string
+	errorParameter      string
+	errorCode           string
 }
 
 // Defines all possible error codes
@@ -37,6 +41,7 @@ func (a *Args) Init(schema string, args []string) {
 	a.booleanArgs = map[string]bool{}
 	a.stringArgs = map[string]string{}
 	a.intArgs = map[string]int{}
+	a.errorCode = ErrorCodeOk
 
 	a.valid = a.parse()
 }
@@ -139,14 +144,93 @@ func (a *Args) parseElement(argChar string) {
 
 func (a *Args) setArgument(argChar string) bool {
 	if a.isBooleanArg(argChar) {
-		return true
-		//a.setBooleanArg(argChar, true)
+		a.setBooleanArg(argChar, true)
+	} else if a.isStringArg(argChar) {
+		a.setStringArg(argChar)
+	} else if a.isIntArg(argChar) {
+		a.setIntArg(argChar)
+	} else {
+		return false
 	}
-	return false
+	return true
+}
+
+func (a *Args) isIntArg(argChar string) bool {
+	_, ok := a.intArgs[argChar]
+	return ok
+}
+
+func (a *Args) setIntArg(argChar string) {
+	a.currentArgument++
+	var parameter string
+	parameter = a.args[a.currentArgument]
+	intParam, err := strconv.Atoi(parameter)
+
+	if err != nil {
+		a.errorArgumentID = argChar
+		a.errorParameter = parameter
+		a.errorCode = ErrorCodeInvalidInteger
+	}
+
+	a.intArgs[argChar] = intParam
+}
+
+func (a *Args) setStringArg(argChar string) {
+	a.currentArgument++
+	a.stringArgs[argChar] = a.args[a.currentArgument]
+}
+
+func (a *Args) isStringArg(argChar string) bool {
+	_, ok := a.stringArgs[argChar]
+	return ok
+}
+
+func (a *Args) setBooleanArg(argChar string, value bool) {
+	a.booleanArgs[argChar] = value
 }
 
 func (a *Args) isBooleanArg(argChar string) bool {
 	_, ok := a.booleanArgs[argChar]
-	fmt.Println(ok)
 	return ok
+}
+
+// Cardinality returns the number of args found
+func (a *Args) Cardinality() int {
+	return len(a.argsFound)
+}
+
+// Usage returns the current schema for the Args instance
+func (a *Args) Usage() string {
+	if len(a.schema) > 0 {
+		return fmt.Sprintf("-[%v]", a.schema)
+	}
+
+	return ""
+}
+
+// ErrorMessage returns the current error message
+func (a *Args) ErrorMessage() string {
+	switch a.errorCode {
+	case ErrorCodeOk:
+		log.Fatal("TILT: should not get here")
+	case ErrorCodeUnexpectedArgument:
+		return a.unexpectedArgumentMessage()
+	case ErrorCodeMissingString:
+		return fmt.Sprintf("Could not find string parameter for -%v", a.errorArgumentID)
+	case ErrorCodeInvalidInteger:
+		return fmt.Sprintf("Argument -%v expects an integer but was '%v'.", a.errorArgumentID, a.errorParameter)
+	case ErrorCodeMissingInteger:
+		return fmt.Sprintf("Could not find integer parameter for -%v", a.errorArgumentID)
+	}
+
+	return ""
+}
+
+func (a *Args) unexpectedArgumentMessage() string {
+	message := "Argument(s) -"
+	for arg := range a.unexpectedArguments {
+		message += arg
+	}
+	message += " unexpected."
+	return message
 }
