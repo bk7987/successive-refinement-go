@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	arguments := []string{"dfdsf", "3"}
+	arguments := []string{"t", "3"}
 	var a args.Args
-	a.Init("3dfldjfs", arguments)
+	a.Init("l", arguments)
 }
