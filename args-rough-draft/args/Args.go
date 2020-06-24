@@ -41,6 +41,8 @@ func (a *Args) Init(schema string, args []string) {
 	a.booleanArgs = map[string]bool{}
 	a.stringArgs = map[string]string{}
 	a.intArgs = map[string]int{}
+	a.argsFound = map[string]string{}
+	a.unexpectedArguments = map[string]string{}
 	a.errorCode = ErrorCodeOk
 
 	a.valid = a.parse()
@@ -138,7 +140,11 @@ func (a *Args) parseElements(arg string) {
 
 func (a *Args) parseElement(argChar string) {
 	if a.setArgument(argChar) {
-
+		a.argsFound[argChar] = argChar
+	} else {
+		a.unexpectedArguments[argChar] = argChar
+		a.errorCode = ErrorCodeUnexpectedArgument
+		a.valid = false
 	}
 }
 
@@ -162,8 +168,7 @@ func (a *Args) isIntArg(argChar string) bool {
 
 func (a *Args) setIntArg(argChar string) {
 	a.currentArgument++
-	var parameter string
-	parameter = a.args[a.currentArgument]
+	parameter := a.args[a.currentArgument]
 	intParam, err := strconv.Atoi(parameter)
 
 	if err != nil {
@@ -233,4 +238,42 @@ func (a *Args) unexpectedArgumentMessage() string {
 	}
 	message += " unexpected."
 	return message
+}
+
+func falseIfNull(b bool) bool {
+	return b
+}
+
+func zeroIfNull(i int) int {
+	return i
+}
+
+func blankIfNull(s string) string {
+	return s
+}
+
+// GetString returns the requested string argument
+func (a *Args) GetString(arg string) string {
+	return blankIfNull(a.stringArgs[arg])
+}
+
+// GetInt returns the requested integer argument
+func (a *Args) GetInt(arg string) int {
+	return zeroIfNull(a.intArgs[arg])
+}
+
+// GetBoolean returns the requested boolean argument
+func (a *Args) GetBoolean(arg string) bool {
+	return falseIfNull(a.booleanArgs[arg])
+}
+
+// Has returns true if the requested argument has been found
+func (a *Args) Has(arg string) bool {
+	_, has := a.argsFound[arg]
+	return has
+}
+
+// IsValid returns the valid variable
+func (a *Args) IsValid() bool {
+	return a.valid
 }
